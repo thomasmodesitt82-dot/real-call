@@ -16,6 +16,8 @@ app.post("/incoming-call", async (req, res) => {
 
   const event = req.body?.data?.event_type;
   const callControlId = req.body?.data?.payload?.call_control_id;
+  console.log("API key loaded:", process.env.TELNYX_API_KEY ? "YES" : "NO");
+console.log("API key starts with:", process.env.TELNYX_API_KEY ? process.env.TELNYX_API_KEY.substring(0, 6) : "MISSING");
 
   if (event === "call.initiated" && callControlId) {
     try {
