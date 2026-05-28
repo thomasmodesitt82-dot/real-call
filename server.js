@@ -8,7 +8,7 @@ app.get("/", (req, res) => {
   res.send("Call screening app is running.");
 });
 
-app.post("/incoming-call", (req, res) => {
+app.post("/incoming-call", async (req, res) => {
 
   console.log("Incoming call received");
 
@@ -18,12 +18,52 @@ app.post("/incoming-call", (req, res) => {
     received: true
   });
 
-});
+  const event = req.body?.data?.event_type;
 
-const PORT = process.env.PORT || 3000;
+  const callControlId =
+    req.body?.data?.payload?.call_control_id;
 
-app.listen(PORT, () => {
+  if (event === "call.initiated" && callControlId) {
 
-  console.log(`Server running on ${PORT}`);
+    try {
+
+      const response = await fetch(
+
+        `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
+
+        {
+
+          method: "POST",
+
+          headers: {
+
+            Authorization:
+              `Bearer ${process.env.TELNYX_API_KEY}`,
+
+            "Content-Type": "application/json"
+
+          }
+
+        }
+
+      );
+
+      console.log(
+
+        "Answer Status:",
+
+        response.status
+
+      );
+
+    }
+
+    catch (err) {
+
+      console.log(err);
+
+    }
+
+  }
 
 });
