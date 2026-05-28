@@ -16,12 +16,12 @@ app.post("/incoming-call", async (req, res) => {
 
   const event = req.body?.data?.event_type;
   const callControlId = req.body?.data?.payload?.call_control_id;
+
   console.log("API key loaded:", process.env.TELNYX_API_KEY ? "YES" : "NO");
-console.log("API key starts with:", process.env.TELNYX_API_KEY ? process.env.TELNYX_API_KEY.substring(0, 6) : "MISSING");
 
   if (event === "call.initiated" && callControlId) {
     try {
-      const response = await fetch(
+      const answerResponse = await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
         {
           method: "POST",
@@ -32,10 +32,28 @@ console.log("API key starts with:", process.env.TELNYX_API_KEY ? process.env.TEL
         }
       );
 
-      const text = await response.text();
-      console.log("Answer Status:", response.status, text);
+      const answerText = await answerResponse.text();
+      console.log("Answer Status:", answerResponse.status, answerText);
+
+      const speakResponse = await fetch(
+        `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            payload: "Welcome to Real Call. Please press seven to continue.",
+            voice: "female"
+          })
+        }
+      );
+
+      const speakText = await speakResponse.text();
+      console.log("Speak Status:", speakResponse.status, speakText);
     } catch (err) {
-      console.error("Answer Error:", err);
+      console.error("Call Control Error:", err);
     }
   }
 });
