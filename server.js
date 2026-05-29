@@ -1,3 +1,22 @@
+const LOG_FILE = "./call-logs.json";
+
+let callLogsData = require("./call-logs.json");
+let callLogs = callLogsData.calls;
+
+function saveCallLog(type, phoneNumber) {
+  callLogs.unshift({
+    time: new Date().toLocaleString(),
+    type,
+    phoneNumber
+  });
+
+  callLogs = callLogs.slice(0, 100);
+
+  fs.writeFileSync(
+    LOG_FILE,
+    JSON.stringify({ calls: callLogs }, null, 2)
+  );
+}
 const fs = require("fs");
 const express = require("express");
 
