@@ -25,6 +25,13 @@ app.get("/admin", (req,res)=>{
 res.send(`
 <h1>Whitelist Admin</h1>
 
+<h2>Destination Number</h2>
+
+<form method="POST" action="/update-destination">
+  <input name="destinationNumber" value="${config.destinationNumber}" />
+  <button type="submit">Save Destination</button>
+</form>
+
 <form method="POST" action="/add-number">
 
 <input
@@ -45,6 +52,24 @@ ${whitelist.map(number => `
 <form
 method="POST"
 action="/remove-number"
+app.post(
+  "/update-destination",
+  express.urlencoded({ extended: true }),
+  (req, res) => {
+    const destinationNumber = req.body.destinationNumber?.trim();
+
+    if (destinationNumber) {
+      config.destinationNumber = destinationNumber;
+
+      fs.writeFileSync(
+        CONFIG_FILE,
+        JSON.stringify(config, null, 2)
+      );
+    }
+
+    res.redirect("/admin");
+  }
+);
 style="margin-bottom:10px;"
 >
 
@@ -136,7 +161,7 @@ async function dialDestination() {
           process.env.BUSINESS_NUMBER,
 
         to:
-          process.env.DESTINATION_NUMBER
+          to: config.destinationNumber
       })
     }
   );
