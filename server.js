@@ -1,3 +1,6 @@
+const CONFIG_FILE = "./config.json";
+
+let config = require("./config.json");
 const fs = require("fs");
 
 const WHITELIST_FILE =
