@@ -66,10 +66,35 @@ app.post("/incoming-call", async (req, res) => {
     const digits = req.body?.data?.payload?.digits;
 
     console.log("Gather ended. Digits pressed:", digits);
+if (digits === "1") {
 
-    if (digits === "1") {
-      console.log("Caller passed screening.");
-    } else {
+  console.log("Caller passed screening.");
+
+  const dialResponse = await fetch(
+    `https://api.telnyx.com/v2/calls/${callControlId}/actions/dial`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        connection_id: process.env.TELNYX_CONNECTION_ID,
+        to: "18125317290"
+      })
+    }
+  );
+
+  const dialText = await dialResponse.text();
+
+  console.log(
+    "Dial Status:",
+    dialResponse.status,
+    dialText
+  );
+
+}
+     else {
       console.log("Caller failed screening. Hanging up.");
 
       try {
