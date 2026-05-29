@@ -208,7 +208,22 @@ async (req, res) => {
 
       originalCallerCallControlId =
         callControlId;
-
+await fetch(
+  `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      payload: "Please hold while we connect your call.",
+      voice: "female",
+      language: "en-US"
+    })
+  }
+);
+      
       await dialDestination();
 
     }
