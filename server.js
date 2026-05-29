@@ -82,12 +82,11 @@ app.post("/incoming-call", async (req, res) => {
             Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            connection_id: process.env.TELNYX_CONNECTION_ID,
-            from: "+18122060731",
-            to: "+18125317290"
-          })
-        });
+   body: JSON.stringify({
+  connection_id: process.env.TELNYX_CONNECTION_ID,
+  from: req.body?.data?.payload?.from,
+  to: "+18125317290"
+})
 
         const dialText = await dialResponse.text();
         console.log("Dial Status:", dialResponse.status, dialText);
