@@ -14,7 +14,7 @@ app.get("/", (req, res) => {
   res.send("Call screening app is running.");
 });
 
-async function dialCell() {
+async function dialDestination() {
   const dialResponse = await fetch("https://api.telnyx.com/v2/calls", {
     method: "POST",
     headers: {
@@ -23,8 +23,8 @@ async function dialCell() {
     },
     body: JSON.stringify({
       connection_id: process.env.TELNYX_CONNECTION_ID,
-      from: "+18122060731",
-      to: "+18125317290"
+      from: process.env.BUSINESS_NUMBER,
+      to: process.env.DESTINATION_NUMBER
     })
   });
 
@@ -69,7 +69,7 @@ app.post("/incoming-call", async (req, res) => {
         console.log("Whitelisted caller. Skipping screening.");
         console.log("Saved original caller call control ID:", originalCallerCallControlId);
 
-        await dialCell();
+        dialDestination();
         return;
       }
 
@@ -112,7 +112,7 @@ app.post("/incoming-call", async (req, res) => {
       console.log("Saved original caller call control ID:", originalCallerCallControlId);
 
       try {
-        await dialCell();
+       await dialDestination()
       } catch (error) {
         console.error("Dial error:", error);
       }
