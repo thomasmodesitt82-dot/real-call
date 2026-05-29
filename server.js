@@ -4,11 +4,33 @@ const app = express();
 
 let originalCallerCallControlId = null;
 
+const whitelist = [
+  "+18122631338"
+];
+
 app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Call screening app is running.");
 });
+
+async function dialCell() {
+  const dialResponse = await fetch("https://api.telnyx.com/v2/calls", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      connection_id: process.env.TELNYX_CONNECTION_ID,
+      from: "+18122060731",
+      to: "+18125317290"
+    })
+  });
+
+  const dialText = await dialResponse.text();
+  console.log("Dial Status:", dialResponse.status, dialText);
+}
 
 app.post("/incoming-call", async (req, res) => {
   console.log("Incoming call received");
@@ -17,9 +39,12 @@ app.post("/incoming-call", async (req, res) => {
   res.status(200).json({ received: true });
 
   const event = req.body?.data?.event_type;
-  const callControlId = req.body?.data?.payload?.call_control_id;
+  const payload = req.body?.data?.payload;
+  const callControlId = payload?.call_control_id;
+  const callerNumber = payload?.from;
 
   console.log("Event:", event);
+  console.log("Caller:", callerNumber);
   console.log("API key loaded:", process.env.TELNYX_API_KEY ? "YES" : "NO");
 
   if (event === "call.initiated" && callControlId) {
@@ -38,6 +63,16 @@ app.post("/incoming-call", async (req, res) => {
       const answerText = await answerResponse.text();
       console.log("Answer Status:", answerResponse.status, answerText);
 
+      if (whitelist.includes(callerNumber)) {
+        originalCallerCallControlId = callControlId;
+
+        console.log("Whitelisted caller. Skipping screening.");
+        console.log("Saved original caller call control ID:", originalCallerCallControlId);
+
+        await dialCell();
+        return;
+      }
+
       const gatherResponse = await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/gather_using_speak`,
         {
@@ -46,15 +81,15 @@ app.post("/incoming-call", async (req, res) => {
             Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
             "Content-Type": "application/json"
           },
-body: JSON.stringify({
-  payload: "Thank you for calling. Please press 1 to connect.",
-  voice: "female",
-  language: "en-US",
-  valid_digits: "1",
-  maximum_digits: 1,
-  timeout_millis: 5000,
-  maximum_tries: 1
-})
+          body: JSON.stringify({
+            payload: "Thank you for calling. Please press 1 to connect.",
+            voice: "female",
+            language: "en-US",
+            valid_digits: "1",
+            maximum_digits: 1,
+            timeout_millis: 5000,
+            maximum_tries: 1
+          })
         }
       );
 
@@ -66,7 +101,7 @@ body: JSON.stringify({
   }
 
   if (event === "call.gather.ended" && callControlId) {
-    const digits = req.body?.data?.payload?.digits;
+    const digits = payload?.digits;
 
     console.log("Gather ended. Digits pressed:", digits);
 
@@ -77,21 +112,7 @@ body: JSON.stringify({
       console.log("Saved original caller call control ID:", originalCallerCallControlId);
 
       try {
-        const dialResponse = await fetch("https://api.telnyx.com/v2/calls", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            connection_id: process.env.TELNYX_CONNECTION_ID,
-            from: "+18122060731",
-            to: "+18125317290"
-          })
-        });
-
-        const dialText = await dialResponse.text();
-        console.log("Dial Status:", dialResponse.status, dialText);
+        await dialCell();
       } catch (error) {
         console.error("Dial error:", error);
       }
