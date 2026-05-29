@@ -46,14 +46,15 @@ app.post("/incoming-call", async (req, res) => {
             Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            payload: "Thank you for calling. To help reduce spam and robocalls, please press 1 to connect.",
-            voice: "female",
-            language: "en-US",
-            valid_digits: "1",
-            maximum_digits: 1,
-            timeout_millis: 10000
-          })
+      body: JSON.stringify({
+  payload: "Thank you for calling. To help reduce spam and robocalls, please press 1 to connect.",
+  voice: "female",
+  language: "en-US",
+  valid_digits: "1",
+  maximum_digits: 1,
+  timeout_millis: 10000,
+  tries: 1
+})
         }
       );
 
