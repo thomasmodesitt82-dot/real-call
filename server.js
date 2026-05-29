@@ -206,13 +206,21 @@ async (req, res) => {
 
     try {
 
-      const answerResponse =
+    const answerResponse = await fetch(
+  `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    }
+  }
+);
 
-
-      console.log(
-        "Answer Status:",
-        answerResponse.status
-      );
+console.log(
+  "Answer Status:",
+  answerResponse.status
+);
 
       if (
         whitelist.includes(
