@@ -71,19 +71,20 @@ if (digits === "1") {
   console.log("Caller passed screening.");
 
   const dialResponse = await fetch(
-    `https://api.telnyx.com/v2/calls/${callControlId}/actions/dial`,
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        connection_id: process.env.TELNYX_CONNECTION_ID,
-        to: "18125317290"
-      })
-    }
-  );
+  `https://api.telnyx.com/v2/calls`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      connection_id: process.env.TELNYX_CONNECTION_ID,
+      from: "+18122060731",
+      to: "+18125317290"
+    })
+  }
+);
 
   const dialText = await dialResponse.text();
 
