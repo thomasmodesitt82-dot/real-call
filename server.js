@@ -52,8 +52,8 @@ app.post("/incoming-call", async (req, res) => {
   language: "en-US",
   valid_digits: "1",
   maximum_digits: 1,
-  timeout_millis: 10000,
-  tries: 1
+  timeout_millis: 5000,
+  
 })
         }
       );
