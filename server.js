@@ -48,6 +48,20 @@ null,
 `);
 
 });
+app.post("/add-number", express.urlencoded({ extended: true }), (req, res) => {
+  const newNumber = req.body.number?.trim();
+
+  if (newNumber && !whitelist.includes(newNumber)) {
+    whitelist.push(newNumber);
+
+    fs.writeFileSync(
+      WHITELIST_FILE,
+      JSON.stringify({ whitelist }, null, 2)
+    );
+  }
+
+  res.redirect("/admin");
+});
 
 async function dialDestination() {
 
