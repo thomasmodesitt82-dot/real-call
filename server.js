@@ -1,4 +1,19 @@
+const fs = require("fs");
+const express = require("express");
+
+const app = express();
+
+const WHITELIST_FILE = "./whitelist.json";
+const CONFIG_FILE = "./config.json";
 const LOG_FILE = "./call-logs.json";
+
+let originalCallerCallControlId = null;
+let outboundCallControlId = null;
+
+let whitelistData = require("./whitelist.json");
+let whitelist = whitelistData.whitelist;
+
+let config = require("./config.json");
 
 let callLogsData = require("./call-logs.json");
 let callLogs = callLogsData.calls;
@@ -17,21 +32,6 @@ function saveCallLog(type, phoneNumber) {
     JSON.stringify({ calls: callLogs }, null, 2)
   );
 }
-const fs = require("fs");
-const express = require("express");
-
-const app = express();
-
-const WHITELIST_FILE = "./whitelist.json";
-const CONFIG_FILE = "./config.json";
-
-let originalCallerCallControlId = null;
-let outboundCallControlId = null;
-
-let whitelistData = require("./whitelist.json");
-let whitelist = whitelistData.whitelist;
-
-let config = require("./config.json");
 
 app.use(express.json());
 
@@ -41,39 +41,34 @@ app.get("/", (req, res) => {
 
 app.get("/admin", (req, res) => {
   res.send(`
-    <h1>Whitelist Admin</h1>
+    <h1>Call Screening Admin</h1>
 
-<h2>Call Stats</h2>
-saveCallLog("WHITELIST", callerNumber);
-<p>Total Logged Calls: ${callLogs.length}</p>
-<p>Whitelisted: ${callLogs.filter(call => call.type === "WHITELIST").length}</p>
-<p>Passed Screening: ${callLogs.filter(call => call.type === "PASSED").length}</p>
-<p>Failed Screening: ${callLogs.filter(call => call.type === "FAILED").length}</p>
+    <h2>Call Stats</h2>
+    <p>Total Logged Calls: ${callLogs.length}</p>
+    <p>Whitelisted: ${callLogs.filter(call => call.type === "WHITELIST").length}</p>
+    <p>Passed Screening: ${callLogs.filter(call => call.type === "PASSED").length}</p>
+    <p>Failed Screening: ${callLogs.filter(call => call.type === "FAILED").length}</p>
 
-<h2>Recent Calls</h2>
-
-${callLogs.slice(0, 20).map(call => `
-  <div style="margin-bottom:8px;">
-    <strong>${call.type}</strong> - ${call.phoneNumber} - ${call.time}
-  </div>
-`).join("")}
+    <h2>Recent Calls</h2>
+    ${callLogs.slice(0, 20).map(call => `
+      <div style="margin-bottom:8px;">
+        <strong>${call.type}</strong> - ${call.phoneNumber} - ${call.time}
+      </div>
+    `).join("")}
 
     <h2>Destination Number</h2>
-
     <form method="POST" action="/update-destination">
       <input name="destinationNumber" value="${config.destinationNumber}" />
       <button type="submit">Save Destination</button>
     </form>
 
     <h2>Add Whitelist Number</h2>
-
     <form method="POST" action="/add-number">
       <input name="number" placeholder="+18125551234" />
       <button type="submit">Add Number</button>
     </form>
 
     <h2>Current Whitelist</h2>
-
     ${whitelist.map(number => `
       <form method="POST" action="/remove-number" style="margin-bottom:10px;">
         <input type="hidden" name="number" value="${number}" />
@@ -84,96 +79,74 @@ ${callLogs.slice(0, 20).map(call => `
   `);
 });
 
-app.post(
-  "/update-destination",
-  express.urlencoded({ extended: true }),
-  (req, res) => {
-    const destinationNumber = req.body.destinationNumber?.trim();
+app.post("/update-destination", express.urlencoded({ extended: true }), (req, res) => {
+  const destinationNumber = req.body.destinationNumber?.trim();
 
-    if (destinationNumber) {
-      config.destinationNumber = destinationNumber;
+  if (destinationNumber) {
+    config.destinationNumber = destinationNumber;
 
-      fs.writeFileSync(
-        CONFIG_FILE,
-        JSON.stringify(config, null, 2)
-      );
-    }
-
-    res.redirect("/admin");
+    fs.writeFileSync(
+      CONFIG_FILE,
+      JSON.stringify(config, null, 2)
+    );
   }
-);
 
-app.post(
-  "/add-number",
-  express.urlencoded({ extended: true }),
-  (req, res) => {
-    const newNumber = req.body.number?.trim();
+  res.redirect("/admin");
+});
 
-    if (newNumber && !whitelist.includes(newNumber)) {
-      whitelist.push(newNumber);
+app.post("/add-number", express.urlencoded({ extended: true }), (req, res) => {
+  const newNumber = req.body.number?.trim();
 
-      fs.writeFileSync(
-        WHITELIST_FILE,
-        JSON.stringify({ whitelist }, null, 2)
-      );
-    }
+  if (newNumber && !whitelist.includes(newNumber)) {
+    whitelist.push(newNumber);
 
-    res.redirect("/admin");
+    fs.writeFileSync(
+      WHITELIST_FILE,
+      JSON.stringify({ whitelist }, null, 2)
+    );
   }
-);
 
-app.post(
-  "/remove-number",
-  express.urlencoded({ extended: true }),
-  (req, res) => {
-    const numberToRemove = req.body.number?.trim();
+  res.redirect("/admin");
+});
 
-    const index = whitelist.indexOf(numberToRemove);
+app.post("/remove-number", express.urlencoded({ extended: true }), (req, res) => {
+  const numberToRemove = req.body.number?.trim();
 
-    if (index !== -1) {
-      whitelist.splice(index, 1);
+  const index = whitelist.indexOf(numberToRemove);
 
-      fs.writeFileSync(
-        WHITELIST_FILE,
-        JSON.stringify({ whitelist }, null, 2)
-      );
-    }
+  if (index !== -1) {
+    whitelist.splice(index, 1);
 
-    res.redirect("/admin");
+    fs.writeFileSync(
+      WHITELIST_FILE,
+      JSON.stringify({ whitelist }, null, 2)
+    );
   }
-);
+
+  res.redirect("/admin");
+});
 
 async function dialDestination() {
-  const dialResponse = await fetch(
-    "https://api.telnyx.com/v2/calls",
-    {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-        "Content-Type": "application/json"
-      },
-      body: JSON.stringify({
-        connection_id: process.env.TELNYX_CONNECTION_ID,
-        from: process.env.BUSINESS_NUMBER,
-        to: config.destinationNumber
-      })
-    }
-  );
+  const dialResponse = await fetch("https://api.telnyx.com/v2/calls", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      connection_id: process.env.TELNYX_CONNECTION_ID,
+      from: process.env.BUSINESS_NUMBER,
+      to: config.destinationNumber
+    })
+  });
 
   const dialData = await dialResponse.json();
 
-  console.log(
-    "Dial Status:",
-    dialResponse.status,
-    JSON.stringify(dialData)
-  );
+  console.log("Dial Status:", dialResponse.status, JSON.stringify(dialData));
 
   outboundCallControlId = dialData?.data?.call_control_id;
 
-  console.log(
-    "Saved outbound call:",
-    outboundCallControlId
-  );
+  console.log("Saved outbound call:", outboundCallControlId);
 }
 
 app.post("/incoming-call", async (req, res) => {
@@ -209,6 +182,8 @@ app.post("/incoming-call", async (req, res) => {
         originalCallerCallControlId = callControlId;
 
         console.log("Whitelisted caller");
+
+        saveCallLog("WHITELIST", callerNumber);
 
         await dialDestination();
 
@@ -248,7 +223,9 @@ app.post("/incoming-call", async (req, res) => {
 
     if (digits === "1") {
       originalCallerCallControlId = callControlId;
-saveCallLog("PASSED", callerNumber);
+
+      saveCallLog("PASSED", callerNumber);
+
       await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
         {
@@ -267,6 +244,8 @@ saveCallLog("PASSED", callerNumber);
 
       await dialDestination();
     } else {
+      saveCallLog("FAILED", callerNumber);
+
       await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`,
         {
@@ -309,7 +288,7 @@ saveCallLog("PASSED", callerNumber);
       outboundCallControlId
     ) {
       console.log("Cancelling outbound ring");
-saveCallLog("FAILED", callerNumber);
+
       await fetch(
         `https://api.telnyx.com/v2/calls/${outboundCallControlId}/actions/hangup`,
         {
