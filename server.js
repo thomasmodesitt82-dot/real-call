@@ -47,7 +47,7 @@ app.post("/incoming-call", async (req, res) => {
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
-            payload: "Thank you for calling. Please press 1 to continue.",
+            payload: "Thank you for calling. To help reduce spam and robocalls, please press 1 to connect.",
             voice: "female",
             language: "en-US",
             valid_digits: "1",
@@ -73,29 +73,27 @@ app.post("/incoming-call", async (req, res) => {
       originalCallerCallControlId = callControlId;
 
       console.log("Caller passed screening.");
-      console.log("Saved original caller ID:", originalCallerCallControlId);
+      console.log("Saved original caller call control ID:", originalCallerCallControlId);
 
-try {
-  const originalCallerNumber = req.body?.data?.payload?.from;
+      try {
+        const dialResponse = await fetch("https://api.telnyx.com/v2/calls", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            connection_id: process.env.TELNYX_CONNECTION_ID,
+            from: "+18122060731",
+            to: "+18125317290"
+          })
+        });
 
-  const dialResponse = await fetch(`https://api.telnyx.com/v2/calls`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      connection_id: process.env.TELNYX_CONNECTION_ID,
-      from: originalCallerNumber,
-      to: "+18125317290"
-    })
-  });
-
-  const dialText = await dialResponse.text();
-  console.log("Dial Status:", dialResponse.status, dialText);
-} catch (error) {
-  console.error("Dial error:", error);
-}
+        const dialText = await dialResponse.text();
+        console.log("Dial Status:", dialResponse.status, dialText);
+      } catch (error) {
+        console.error("Dial error:", error);
+      }
     } else {
       console.log("Caller failed screening. Hanging up.");
 
