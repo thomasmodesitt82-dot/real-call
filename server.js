@@ -1,3 +1,7 @@
+const fs = require("fs");
+
+const WHITELIST_FILE =
+"./whitelist.json";
 const express = require("express");
 
 const app = express();
@@ -12,6 +16,37 @@ app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Call screening app is running.");
+});
+app.get("/admin", (req,res)=>{
+
+res.send(`
+<h1>Whitelist Admin</h1>
+
+<form method="POST" action="/add-number">
+
+<input
+name="number"
+placeholder="+18125551234"
+/>
+
+<button>
+Add Number
+</button>
+
+</form>
+
+<pre>
+
+${JSON.stringify(
+whitelist,
+null,
+2
+)}
+
+</pre>
+
+`);
+
 });
 
 async function dialDestination() {
