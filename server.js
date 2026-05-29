@@ -178,7 +178,7 @@ async (req, res) => {
           body: JSON.stringify({
 
             payload:
-            "Thank you for calling. Please do not be stupid today you gay ass fag.  Please press 1 to connect.",
+            "Thank you for calling.  Please press 1 to connect.",
 
             voice:
             "female",
