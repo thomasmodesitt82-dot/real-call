@@ -1,57 +1,55 @@
-const CONFIG_FILE = "./config.json";
-
-let config = require("./config.json");
 const fs = require("fs");
-
-const WHITELIST_FILE =
-"./whitelist.json";
 const express = require("express");
 
 const app = express();
 
+const WHITELIST_FILE = "./whitelist.json";
+const CONFIG_FILE = "./config.json";
+
 let originalCallerCallControlId = null;
 let outboundCallControlId = null;
 
-const whitelistData = require("./whitelist.json");
-const whitelist = whitelistData.whitelist;
+let whitelistData = require("./whitelist.json");
+let whitelist = whitelistData.whitelist;
+
+let config = require("./config.json");
 
 app.use(express.json());
 
 app.get("/", (req, res) => {
   res.send("Call screening app is running.");
 });
-app.get("/admin", (req,res)=>{
 
-res.send(`
-<h1>Whitelist Admin</h1>
+app.get("/admin", (req, res) => {
+  res.send(`
+    <h1>Whitelist Admin</h1>
 
-<h2>Destination Number</h2>
+    <h2>Destination Number</h2>
 
-<form method="POST" action="/update-destination">
-  <input name="destinationNumber" value="${config.destinationNumber}" />
-  <button type="submit">Save Destination</button>
-</form>
+    <form method="POST" action="/update-destination">
+      <input name="destinationNumber" value="${config.destinationNumber}" />
+      <button type="submit">Save Destination</button>
+    </form>
 
-<form method="POST" action="/add-number">
+    <h2>Add Whitelist Number</h2>
 
-<input
-name="number"
-placeholder="+18125551234"
-/>
+    <form method="POST" action="/add-number">
+      <input name="number" placeholder="+18125551234" />
+      <button type="submit">Add Number</button>
+    </form>
 
-<button>
-Add Number
-</button>
+    <h2>Current Whitelist</h2>
 
-</form>
+    ${whitelist.map(number => `
+      <form method="POST" action="/remove-number" style="margin-bottom:10px;">
+        <input type="hidden" name="number" value="${number}" />
+        <span>${number}</span>
+        <button type="submit">Remove</button>
+      </form>
+    `).join("")}
+  `);
+});
 
-<h2>Current Whitelist</h2>
-
-${whitelist.map(number => `
-
-<form
-method="POST"
-action="/remove-number"
 app.post(
   "/update-destination",
   express.urlencoded({ extended: true }),
@@ -70,81 +68,48 @@ app.post(
     res.redirect("/admin");
   }
 );
-style="margin-bottom:10px;"
->
 
-<input
-type="hidden"
-name="number"
-value="${number}"
-/>
+app.post(
+  "/add-number",
+  express.urlencoded({ extended: true }),
+  (req, res) => {
+    const newNumber = req.body.number?.trim();
 
-${number}
+    if (newNumber && !whitelist.includes(newNumber)) {
+      whitelist.push(newNumber);
 
-<button type="submit">
+      fs.writeFileSync(
+        WHITELIST_FILE,
+        JSON.stringify({ whitelist }, null, 2)
+      );
+    }
 
-Remove
-
-</button>
-
-</form>
-
-`).join("")}
-`);
-
-});
-app.post("/add-number", express.urlencoded({ extended: true }), (req, res) => {
-  const newNumber = req.body.number?.trim();
-
-  if (newNumber && !whitelist.includes(newNumber)) {
-    whitelist.push(newNumber);
-
-    fs.writeFileSync(
-      WHITELIST_FILE,
-      JSON.stringify({ whitelist }, null, 2)
-    );
+    res.redirect("/admin");
   }
-
-  res.redirect("/admin");
-});
+);
 
 app.post(
   "/remove-number",
   express.urlencoded({ extended: true }),
   (req, res) => {
+    const numberToRemove = req.body.number?.trim();
 
-    const numberToRemove =
-      req.body.number?.trim();
-
-    const index =
-      whitelist.indexOf(
-        numberToRemove
-      );
+    const index = whitelist.indexOf(numberToRemove);
 
     if (index !== -1) {
-
-      whitelist.splice(
-        index,
-        1
-      );
+      whitelist.splice(index, 1);
 
       fs.writeFileSync(
         WHITELIST_FILE,
-        JSON.stringify(
-          { whitelist },
-          null,
-          2
-        )
+        JSON.stringify({ whitelist }, null, 2)
       );
-
     }
 
     res.redirect("/admin");
-
-});
+  }
+);
 
 async function dialDestination() {
-
   const dialResponse = await fetch(
     "https://api.telnyx.com/v2/calls",
     {
@@ -154,20 +119,14 @@ async function dialDestination() {
         "Content-Type": "application/json"
       },
       body: JSON.stringify({
-        connection_id:
-          process.env.TELNYX_CONNECTION_ID,
-
-        from:
-          process.env.BUSINESS_NUMBER,
-
-        to:
-          to: config.destinationNumber
+        connection_id: process.env.TELNYX_CONNECTION_ID,
+        from: process.env.BUSINESS_NUMBER,
+        to: config.destinationNumber
       })
     }
   );
 
-  const dialData =
-    await dialResponse.json();
+  const dialData = await dialResponse.json();
 
   console.log(
     "Dial Status:",
@@ -175,324 +134,167 @@ async function dialDestination() {
     JSON.stringify(dialData)
   );
 
-  outboundCallControlId =
-    dialData?.data?.call_control_id;
+  outboundCallControlId = dialData?.data?.call_control_id;
 
   console.log(
     "Saved outbound call:",
     outboundCallControlId
   );
-
 }
 
-app.post(
-"/incoming-call",
-async (req, res) => {
+app.post("/incoming-call", async (req, res) => {
+  console.log("Incoming call received");
+  console.log(JSON.stringify(req.body, null, 2));
 
-  console.log(
-    "Incoming call received"
-  );
+  res.status(200).json({ received: true });
 
-  console.log(
-    JSON.stringify(
-      req.body,
-      null,
-      2
-    )
-  );
+  const event = req.body?.data?.event_type;
+  const payload = req.body?.data?.payload;
+  const callControlId = payload?.call_control_id;
+  const callerNumber = payload?.from;
 
-  res.status(200).json({
-    received: true
-  });
+  console.log("Event:", event);
+  console.log("Caller:", callerNumber);
 
-  const event =
-    req.body?.data?.event_type;
-
-  const payload =
-    req.body?.data?.payload;
-
-  const callControlId =
-    payload?.call_control_id;
-
-  const callerNumber =
-    payload?.from;
-
-  console.log(
-    "Event:",
-    event
-  );
-
-  console.log(
-    "Caller:",
-    callerNumber
-  );
-
-  if (
-    event === "call.initiated" &&
-    callControlId
-  ) {
-
+  if (event === "call.initiated" && callControlId) {
     try {
+      const answerResponse = await fetch(
+        `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
 
-    const answerResponse = await fetch(
-  `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-      "Content-Type": "application/json"
-    }
-  }
-);
+      console.log("Answer Status:", answerResponse.status);
 
-console.log(
-  "Answer Status:",
-  answerResponse.status
-);
+      if (whitelist.includes(callerNumber)) {
+        originalCallerCallControlId = callControlId;
 
-      if (
-        whitelist.includes(
-          callerNumber
-        )
-      ) {
+        console.log("Whitelisted caller");
 
-        originalCallerCallControlId =
-          callControlId;
-
-        console.log(
-          "Whitelisted caller"
-        );
-
-  
-
-        await fetch(
-  `https://api.telnyx.com/v2/calls/${callControlId}/actions/ringing`,
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-      "Content-Type": "application/json"
-    }
-  }
-);
         await dialDestination();
 
         return;
-
       }
 
-      const gatherResponse =
-      await fetch(
+      const gatherResponse = await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/gather_using_speak`,
         {
           method: "POST",
           headers: {
-            Authorization:
-            `Bearer ${process.env.TELNYX_API_KEY}`,
-            "Content-Type":
-            "application/json"
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
-
-            payload:
-            "Thank you for calling.  Please press 1 to connect.",
-
-            voice:
-            "female",
-
-            language:
-            "en-US",
-
-            valid_digits:
-            "1",
-
-            maximum_digits:
-            1,
-
-            timeout_millis:
-            5000,
-
-            maximum_tries:
-            1
-
+            payload: "Thank you for calling. Please press 1 to connect.",
+            voice: "female",
+            language: "en-US",
+            valid_digits: "1",
+            maximum_digits: 1,
+            timeout_millis: 5000,
+            maximum_tries: 1
           })
         }
       );
 
-      console.log(
-        "Gather Status:",
-        gatherResponse.status
+      console.log("Gather Status:", gatherResponse.status);
+    } catch (error) {
+      console.error("Call initiated error:", error);
+    }
+  }
+
+  if (event === "call.gather.ended" && callControlId) {
+    const digits = payload?.digits;
+
+    console.log("Gather ended. Digits:", digits);
+
+    if (digits === "1") {
+      originalCallerCallControlId = callControlId;
+
+      await fetch(
+        `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
+        {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            payload: "Please hold while we connect your call.",
+            voice: "female",
+            language: "en-US"
+          })
+        }
       );
 
-    } catch (error) {
-
-      console.error(error);
-
-    }
-
-  }
-
-  if (
-    event === "call.gather.ended" &&
-    callControlId
-  ) {
-
-    const digits =
-      payload?.digits;
-
-    if (
-      digits === "1"
-    ) {
-
-      originalCallerCallControlId =
-        callControlId;
-await fetch(
-  `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-      "Content-Type": "application/json"
-    },
-    body: JSON.stringify({
-      payload: "Please hold while we connect your call.",
-      voice: "female",
-      language: "en-US"
-    })
-  }
-);
-      
       await dialDestination();
-
-    }
-
-    else {
-
+    } else {
       await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`,
         {
           method: "POST",
           headers: {
-            Authorization:
-            `Bearer ${process.env.TELNYX_API_KEY}`,
-            "Content-Type":
-            "application/json"
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
           }
         }
       );
-
     }
-
   }
 
-  if (
-    event === "call.answered" &&
-    callControlId
-  ) {
-
+  if (event === "call.answered" && callControlId) {
     if (
-
       originalCallerCallControlId &&
-
-      callControlId !==
-      originalCallerCallControlId
-
+      callControlId !== originalCallerCallControlId
     ) {
+      console.log("Outbound call answered. Bridging calls.");
 
       await fetch(
-
         `https://api.telnyx.com/v2/calls/${originalCallerCallControlId}/actions/bridge`,
-
         {
-
           method: "POST",
-
           headers: {
-
-            Authorization:
-            `Bearer ${process.env.TELNYX_API_KEY}`,
-
-            "Content-Type":
-            "application/json"
-
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
           },
-
           body: JSON.stringify({
-
-            call_control_id:
-            callControlId
-
+            call_control_id: callControlId
           })
-
         }
-
       );
-
     }
-
   }
 
-  if (
-    event === "call.hangup" &&
-    callControlId
-  ) {
-
+  if (event === "call.hangup" && callControlId) {
     if (
-
-      callControlId ===
-      originalCallerCallControlId &&
-
+      callControlId === originalCallerCallControlId &&
       outboundCallControlId
-
     ) {
-
-      console.log(
-        "Cancelling outbound ring"
-      );
+      console.log("Cancelling outbound ring");
 
       await fetch(
-
         `https://api.telnyx.com/v2/calls/${outboundCallControlId}/actions/hangup`,
-
         {
-
           method: "POST",
-
           headers: {
-
-            Authorization:
-            `Bearer ${process.env.TELNYX_API_KEY}`,
-
-            "Content-Type":
-            "application/json"
-
+            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type": "application/json"
           }
-
         }
-
       );
 
-      outboundCallControlId =
-        null;
-
-      originalCallerCallControlId =
-        null;
-
+      outboundCallControlId = null;
+      originalCallerCallControlId = null;
     }
-
   }
-
 });
 
-const PORT =
-process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-app.listen(
-PORT,
-() => {
-
-console.log(
-`Server running on ${PORT}`
-);
-
+app.listen(PORT, () => {
+  console.log(`Server running on ${PORT}`);
 });
