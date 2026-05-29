@@ -35,28 +35,21 @@ app.post("/incoming-call", async (req, res) => {
       const answerText = await answerResponse.text();
       console.log("Answer Status:", answerResponse.status, answerText);
 
-      const speakResponse = await fetch(
-        `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            payload: "Welcome to Real Call. Please press seven to continue.",
-            voice: "female"
-          })
-        }
-      );
-
-      const speakText = await speakResponse.text();
-      console.log("Speak Status:", speakResponse.status, speakText);
-    } catch (err) {
-      console.error("Call Control Error:", err);
-    }
+     const speakResponse = await fetch(
+  `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      payload: "Thank you for calling. Please press 1 to continue.",
+      voice: "Joanna",
+      language: "en-US"
+    })
   }
-});
+);
 
 const PORT = process.env.PORT || 3000;
 
