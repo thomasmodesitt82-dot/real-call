@@ -137,6 +137,17 @@ async (req, res) => {
           "Whitelisted caller"
         );
 
+    await fetch(
+  `https://api.telnyx.com/v2/calls/${callControlId}/actions/ringing`,
+  {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    }
+  }
+);
+
         await dialDestination();
 
         return;
