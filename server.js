@@ -80,6 +80,41 @@ app.post("/add-number", express.urlencoded({ extended: true }), (req, res) => {
   res.redirect("/admin");
 });
 
+app.post(
+  "/remove-number",
+  express.urlencoded({ extended: true }),
+  (req, res) => {
+
+    const numberToRemove =
+      req.body.number?.trim();
+
+    const index =
+      whitelist.indexOf(
+        numberToRemove
+      );
+
+    if (index !== -1) {
+
+      whitelist.splice(
+        index,
+        1
+      );
+
+      fs.writeFileSync(
+        WHITELIST_FILE,
+        JSON.stringify(
+          { whitelist },
+          null,
+          2
+        )
+      );
+
+    }
+
+    res.redirect("/admin");
+
+});
+
 async function dialDestination() {
 
   const dialResponse = await fetch(
@@ -172,18 +207,7 @@ async (req, res) => {
     try {
 
       const answerResponse =
-      await fetch(
-        `https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`,
-        {
-          method: "POST",
-          headers: {
-            Authorization:
-            `Bearer ${process.env.TELNYX_API_KEY}`,
-            "Content-Type":
-            "application/json"
-          }
-        }
-      );
+
 
       console.log(
         "Answer Status:",
@@ -203,16 +227,7 @@ async (req, res) => {
           "Whitelisted caller"
         );
 
-    await fetch(
-  `https://api.telnyx.com/v2/calls/${callControlId}/actions/ringing`,
-  {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-      "Content-Type": "application/json"
-    }
-  }
-);
+  
 
         await fetch(
   `https://api.telnyx.com/v2/calls/${callControlId}/actions/ringing`,
