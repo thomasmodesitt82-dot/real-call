@@ -3,6 +3,7 @@ const express = require("express");
 const app = express();
 
 let originalCallerCallControlId = null;
+let outboundCallControlId = null;
 
 const whitelistData =
 require("./whitelist.json");
@@ -30,8 +31,21 @@ async function dialDestination() {
     })
   });
 
-  const dialText = await dialResponse.text();
-  console.log("Dial Status:", dialResponse.status, dialText);
+  const dialData = await dialResponse.json();
+
+console.log(
+  "Dial Status:",
+  dialResponse.status,
+  JSON.stringify(dialData)
+);
+
+outboundCallControlId =
+dialData?.data?.call_control_id;
+
+console.log(
+  "Saved outbound call:",
+  outboundCallControlId
+);
 }
 
 app.post("/incoming-call", async (req, res) => {
@@ -173,7 +187,57 @@ app.post("/incoming-call", async (req, res) => {
     }
   }
 });
+if (event === "call.hangup") {
 
+  if (
+    callControlId === originalCallerCallControlId &&
+    outboundCallControlId
+  ) {
+
+    console.log(
+      "Original caller hung up. Ending outbound call."
+    );
+
+    try {
+
+      const cancelResponse =
+      await fetch(
+        `https://api.telnyx.com/v2/calls/${outboundCallControlId}/actions/hangup`,
+        {
+          method: "POST",
+          headers: {
+            Authorization:
+            `Bearer ${process.env.TELNYX_API_KEY}`,
+            "Content-Type":
+            "application/json"
+          }
+        }
+      );
+
+      const cancelText =
+      await cancelResponse.text();
+
+      console.log(
+        "Outbound Hangup:",
+        cancelResponse.status,
+        cancelText
+      );
+
+      outboundCallControlId = null;
+      originalCallerCallControlId = null;
+
+    } catch (error) {
+
+      console.error(
+        "Outbound cancel error:",
+        error
+      );
+
+    }
+
+  }
+
+}
 const PORT = process.env.PORT || 3000;
 
 app.listen(PORT, () => {
