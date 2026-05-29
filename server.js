@@ -35,16 +35,33 @@ Add Number
 
 </form>
 
-<pre>
+<h2>Current Whitelist</h2>
 
-${JSON.stringify(
-whitelist,
-null,
-2
-)}
+${whitelist.map(number => `
 
-</pre>
+<form
+method="POST"
+action="/remove-number"
+style="margin-bottom:10px;"
+>
 
+<input
+type="hidden"
+name="number"
+value="${number}"
+/>
+
+${number}
+
+<button type="submit">
+
+Remove
+
+</button>
+
+</form>
+
+`).join("")}
 `);
 
 });
