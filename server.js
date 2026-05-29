@@ -75,24 +75,27 @@ app.post("/incoming-call", async (req, res) => {
       console.log("Caller passed screening.");
       console.log("Saved original caller ID:", originalCallerCallControlId);
 
-      try {
-        const dialResponse = await fetch(`https://api.telnyx.com/v2/calls`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
-            "Content-Type": "application/json"
-          },
-   body: JSON.stringify({
-  connection_id: process.env.TELNYX_CONNECTION_ID,
-  from: req.body?.data?.payload?.from,
-  to: "+18125317290"
-})
+try {
+  const originalCallerNumber = req.body?.data?.payload?.from;
 
-        const dialText = await dialResponse.text();
-        console.log("Dial Status:", dialResponse.status, dialText);
-      } catch (error) {
-        console.error("Dial error:", error);
-      }
+  const dialResponse = await fetch(`https://api.telnyx.com/v2/calls`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      connection_id: process.env.TELNYX_CONNECTION_ID,
+      from: originalCallerNumber,
+      to: "+18125317290"
+    })
+  });
+
+  const dialText = await dialResponse.text();
+  console.log("Dial Status:", dialResponse.status, dialText);
+} catch (error) {
+  console.error("Dial error:", error);
+}
     } else {
       console.log("Caller failed screening. Hanging up.");
 
