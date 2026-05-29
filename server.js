@@ -43,6 +43,21 @@ app.get("/admin", (req, res) => {
   res.send(`
     <h1>Whitelist Admin</h1>
 
+<h2>Call Stats</h2>
+saveCallLog("WHITELIST", callerNumber);
+<p>Total Logged Calls: ${callLogs.length}</p>
+<p>Whitelisted: ${callLogs.filter(call => call.type === "WHITELIST").length}</p>
+<p>Passed Screening: ${callLogs.filter(call => call.type === "PASSED").length}</p>
+<p>Failed Screening: ${callLogs.filter(call => call.type === "FAILED").length}</p>
+
+<h2>Recent Calls</h2>
+
+${callLogs.slice(0, 20).map(call => `
+  <div style="margin-bottom:8px;">
+    <strong>${call.type}</strong> - ${call.phoneNumber} - ${call.time}
+  </div>
+`).join("")}
+
     <h2>Destination Number</h2>
 
     <form method="POST" action="/update-destination">
@@ -233,7 +248,7 @@ app.post("/incoming-call", async (req, res) => {
 
     if (digits === "1") {
       originalCallerCallControlId = callControlId;
-
+saveCallLog("PASSED", callerNumber);
       await fetch(
         `https://api.telnyx.com/v2/calls/${callControlId}/actions/speak`,
         {
@@ -294,7 +309,7 @@ app.post("/incoming-call", async (req, res) => {
       outboundCallControlId
     ) {
       console.log("Cancelling outbound ring");
-
+saveCallLog("FAILED", callerNumber);
       await fetch(
         `https://api.telnyx.com/v2/calls/${outboundCallControlId}/actions/hangup`,
         {
