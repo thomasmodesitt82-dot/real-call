@@ -43,11 +43,11 @@ app.post("/incoming-call", async (req, res) => {
             Authorization: `Bearer ${process.env.TELNYX_API_KEY}`,
             "Content-Type": "application/json"
           },
-          body: JSON.stringify({
-            payload: "Thank you for calling. Please press 1 to continue.",
-            voice: "Joanna",
-            language: "en-US"
-          })
+         body: JSON.stringify({
+  payload: "Thank you for calling. Please press 1 to continue.",
+  voice: "female",
+  language: "en-US"
+})
         }
       );
 
