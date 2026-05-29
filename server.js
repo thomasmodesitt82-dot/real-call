@@ -4,9 +4,11 @@ const app = express();
 
 let originalCallerCallControlId = null;
 
-const whitelist = [
-  "+18122631338"
-];
+const whitelistData =
+require("./whitelist.json");
+
+const whitelist =
+whitelistData.whitelist;
 
 app.use(express.json());
 
