@@ -50,11 +50,45 @@ app.get("/admin", (req, res) => {
     <p>Failed Screening: ${callLogs.filter(call => call.type === "FAILED").length}</p>
 
     <h2>Recent Calls</h2>
-    ${callLogs.slice(0, 20).map(call => `
-      <div style="margin-bottom:8px;">
-        <strong>${call.type}</strong> - ${call.phoneNumber} - ${call.time}
-      </div>
-    `).join("")}
+  <table border="1" cellpadding="8" style="border-collapse:collapse;">
+
+<tr>
+
+<th>Date / Time</th>
+
+<th>Number</th>
+
+<th>Status</th>
+
+</tr>
+
+${callLogs.slice(0,50).map(call => `
+
+<tr>
+
+<td>
+
+${call.time}
+
+</td>
+
+<td>
+
+${call.phoneNumber}
+
+</td>
+
+<td>
+
+${call.type}
+
+</td>
+
+</tr>
+
+`).join("")}
+
+</table>
 
     <h2>Destination Number</h2>
     <form method="POST" action="/update-destination">
